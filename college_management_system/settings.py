@@ -22,13 +22,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'f2zx8*lb*em*-*b+!&1lpp&$_9q9kmkar+l3x90do@s(+sr&x7'  # Consider using your secret key
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'replace-this-with-a-long-random-secret-key-value-for-production-only')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
 # ALLOWED_HOSTS = ['smswithdjango.herokuapp.com']
-ALLOWED_HOSTS = ['*']  # Not recommended but useful in dev mode
+ALLOWED_HOSTS = [
+    host.strip() for host in os.environ.get(
+        'DJANGO_ALLOWED_HOSTS', '127.0.0.1,localhost,.pythonanywhere.com'
+    ).split(',') if host.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip() for origin in os.environ.get(
+        'DJANGO_CSRF_TRUSTED_ORIGINS', ''
+    ).split(',') if origin.strip()
+]
 
 
 # Application definition
@@ -146,7 +156,7 @@ STATIC_URL = '/static/'
 
 MEDIA_URL = '/media/'
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 AUTH_USER_MODEL = 'main_app.CustomUser'
 AUTHENTICATION_BACKENDS = ['main_app.EmailBackend.EmailBackend']
@@ -164,12 +174,22 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 
-EMAIL_HOST_USER = os.environ.get('majidgt786@gmail.com') 
-EMAIL_HOST_PASSWORD = os.environ.get('sshswdwuwaokhghd')
-EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
 # DEFAULT_FROM_EMAIL = "School Management System <admin@admin.com>"
 
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-prod_db = dj_database_url.config(conn_max_age=500)
-DATABASES['default'].update(prod_db)
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES['default'] = dj_database_url.parse(DATABASE_URL, conn_max_age=500)
+
+if not DEBUG:
+    SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS', 'True').lower() == 'true'
+    SECURE_HSTS_PRELOAD = os.environ.get('DJANGO_SECURE_HSTS_PRELOAD', 'True').lower() == 'true'
+    SECURE_SSL_REDIRECT = os.environ.get('DJANGO_SECURE_SSL_REDIRECT', 'True').lower() == 'true'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
